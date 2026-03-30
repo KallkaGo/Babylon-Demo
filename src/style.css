@@ -1,0 +1,45 @@
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background-color: black;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.tp-dfwv {
+  /* min-width: 320px; */
+  zoom: 1.2;
+}
+
+.tp-lblv_l {
+  padding-right: 0 !important;
+  flex-shrink: 0;
+}
+
+.tp-sldtxtv {
+  flex: 1;
+}
+
+:root {
+  --loader-size: 200px;
+  --text-color: #cecece; /* Fill data-text */
+  --color-one: #2979ff;
+  --color-two: #ff1744;
+  --color-three: #ffff8d;
+  --color-four: #b2ff59;
+  --light-size: 3px;
+}
+
+.full {
+  width: 100%;
+  height: 100%;
+}
+
+.abs {
+  position: absolute;
+}

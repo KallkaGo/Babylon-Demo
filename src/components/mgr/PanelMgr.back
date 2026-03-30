@@ -1,0 +1,68 @@
+import type { Nullable } from '@babylonjs/core';
+import gsap from 'gsap';
+
+export default class PanelMgr {
+  private static __ins: Nullable<PanelMgr>;
+
+  public static get shared() {
+    if (!this.__ins) {
+      this.__ins = new PanelMgr();
+    }
+
+    return this.__ins;
+  }
+  private _map: Map<string, HTMLElement>;
+  constructor() {
+    this._map = new Map();
+  }
+
+  public bind(name: string, element: HTMLElement) {
+    this._map.set(name, element);
+  }
+
+  public show(name: string): Promise<void> {
+    return new Promise((ok, no) => {
+      if (!this._map.has(name)) {
+        console.warn('请先绑定元素!');
+        no();
+      }
+      const element = this._map.get(name) as HTMLElement;
+      gsap.set(element.style, {
+        display: 'block',
+        opacity: 0,
+      });
+      gsap.to(element.style, {
+        opacity: 1,
+        duration: 0.34,
+        ease: 'power1.inOut',
+        onComplete: () => {
+          // TODO:
+          ok();
+        },
+      });
+    });
+  }
+
+  public hide(name: string): Promise<void> {
+    return new Promise((ok, no) => {
+      if (!this._map.has(name)) {
+        console.warn('请先绑定元素!');
+        no();
+      }
+      const element = this._map.get(name) as HTMLElement;
+      gsap.set(element, { opacity: 1 });
+      gsap.to(element, {
+        opacity: 0,
+        duration: 0.75,
+        ease: 'power1.inOut',
+        onComplete: () => {
+          gsap.set(element.style, {
+            display: 'none',
+            opacity: 1,
+          });
+          ok();
+        },
+      });
+    });
+  }
+}

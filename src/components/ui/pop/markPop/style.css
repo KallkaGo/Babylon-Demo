@@ -1,0 +1,11 @@
+.pop .mark {
+  transition: opacity ease-in-out 0.34s;
+}
+
+.pop .mark .container {
+  width: 30px;
+  height: 30px;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+}

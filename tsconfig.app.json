@@ -1,0 +1,45 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    /* Linting */
+    "strict": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    // "noUncheckedSideEffectImports": true,
+    "allowJs": true,
+    "paths": {
+      "@models/*": [
+        "./static/models/*"
+      ],
+      "@audios/*": [
+        "./static/audios/*"
+      ],
+      "@textures/*": [
+        "./static/textures/*"
+      ],
+      "@images/*": [
+        "./static/images/*"
+      ],
+      "@utils/*": [
+        "./src/utils/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "types": [
+      "node",
+      "vite-plugin-glsl/ext",
+      "@babylonjs/core",
+      "@babylonjs/materials"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "src/components/sketch/materialPlugin/plugin/SSSPlugin.back"
+  ]
+}

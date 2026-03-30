@@ -1,0 +1,148 @@
+import { AbstractEngine, Color3, Material, MaterialDefines, MaterialPluginBase, Scene, SubMesh, Texture, UniformBuffer, type Nullable, ShaderStore } from '@babylonjs/core';
+import { pbrDirectLightingFalloffFunctions } from '@babylonjs/core/Shaders/ShadersInclude/pbrDirectLightingFalloffFunctions';
+import { replaceAll } from '@utils/tools';
+
+console.log(
+  ShaderStore.GetShadersStore()['pbrPixelShader'].replace(
+    '#include<pbrDirectLightingFunctions>',
+    replaceAll(
+      ShaderStore.IncludesShadersStore['pbrDirectLightingFunctions'],
+      `vec3 computeDiffuseLighting(preLightingInfo info,vec3 lightColor) {float diffuseTerm=diffuseBRDF_Burley(info.NdotL,info.NdotV,info.VdotH,info.roughness);return diffuseTerm*info.attenuation*info.NdotL*lightColor;}`,
+      `vec3 computeDiffuseLighting(preLightingInfo info, vec3 lightColor) {
+      float diffuseTerm = diffuseBRDF_Burley(info.NdotL, info.NdotV, info.VdotH, info.roughness);
+      vec3 result = diffuseTerm * info.attenuation * info.NdotL * lightColor;
+      #ifdef FAST_SUBSURFACE
+      /* SSS */
+      vec3 csmThicknessMap = uThicknessColor * texture2D(uThicknessMap, vAlbedoUV).r;
+      vec3 L = info.L;
+      vec3 V = normalize(vEyePosition.xyz - vPositionW);
+      vec3 N = normalize(vNormalW);
+      vec3 H = normalize(L + N * uSubsurfaceDistortion);
+      float VDotH = pow(saturate(dot(V, -H)), uThicknessPower) * uThicknessScale;
+      vec3 I = uThicknessAttenuation * (VDotH + uThicknessAmbient) * csmThicknessMap;
+      result += I * lightColor;
+      #endif
+      return result;
+    }`
+    )
+  )
+);
+
+class SSSPlugin extends MaterialPluginBase {
+  public _isEnabled = false;
+
+  constructor(material: Material) {
+    super(material, 'SSS', 200, { FAST_SUBSURFACE: false });
+    this.thicknessPower = 2.0;
+    this.thicknessAmbient = 0.0;
+    this.thicknessScale = 1;
+    this.subsurfaceDistortion = 0.1;
+    this.thicknessAttenuation = 0.8;
+    this.thicknessColor = new Color3(0.5, 0.3, 0.0);
+    this.thicknessMap = null;
+  }
+
+  public thicknessPower: number;
+  public subsurfaceDistortion: number;
+  public thicknessScale: number;
+  public thicknessAmbient: number;
+  public thicknessAttenuation: number;
+  public thicknessColor: Color3;
+  public thicknessMap: Nullable<Texture>;
+
+  get isEnabled() {
+    return this._isEnabled;
+  }
+
+  set isEnabled(enabled) {
+    if (this._isEnabled === enabled) {
+      return;
+    }
+    this._isEnabled = enabled;
+    this.markAllDefinesAsDirty();
+    this._enable(this._isEnabled);
+  }
+
+  prepareDefines(defines: MaterialDefines) {
+    defines.FAST_SUBSURFACE = this._isEnabled;
+    defines.NEED_UV = true;
+  }
+
+  getUniforms() {
+    return {
+      ubo: [
+        {
+          name: 'uThicknessPower',
+          size: 1,
+          type: 'float',
+        },
+        {
+          name: 'uSubsurfaceDistortion',
+          size: 1,
+          type: 'float',
+        },
+        {
+          name: 'uThicknessScale',
+          size: 1,
+          type: 'float',
+        },
+        {
+          name: 'uThicknessAmbient',
+          size: 1,
+          type: 'float',
+        },
+        {
+          name: 'uThicknessAttenuation',
+          size: 1,
+          type: 'float',
+        },
+        {
+          name: 'uThicknessColor',
+          size: 3,
+          type: 'vec3',
+        },
+      ],
+      fragment: `
+        uniform float uThicknessPower;
+        uniform float uSubsurfaceDistortion;
+        uniform float uThicknessScale;
+        uniform float uThicknessAmbient;
+        uniform float uThicknessAttenuation;
+        uniform vec3 uThicknessColor;
+      `,
+    };
+  }
+
+  getSamplers(_samplers: string[]): void {
+    _samplers.push('uThicknessMap');
+  }
+  bindForSubMesh(_uniformBuffer: UniformBuffer, _scene: Scene, _engine: AbstractEngine, _subMesh: SubMesh): void {
+    if (this._isEnabled) {
+      _uniformBuffer.updateFloat('uThicknessPower', this.thicknessPower);
+      _uniformBuffer.updateFloat('uSubsurfaceDistortion', this.subsurfaceDistortion);
+      _uniformBuffer.updateFloat('uThicknessScale', this.thicknessScale);
+      _uniformBuffer.updateFloat('uThicknessAmbient', this.thicknessAmbient);
+      _uniformBuffer.updateFloat('uThicknessAttenuation', this.thicknessAttenuation);
+      _uniformBuffer.updateColor3('uThicknessColor', this.thicknessColor);
+      _uniformBuffer.setTexture('uThicknessMap', this.thicknessMap);
+    }
+  }
+
+  getClassName() {
+    return 'SSSPlugin';
+  }
+
+  getCustomCode(shaderType: string): Nullable<{
+    [pointName: string]: string;
+  }> {
+    if (shaderType === 'fragment') {
+      return {
+        '!\\/^.*$/': ``,
+      };
+    }
+
+    return null;
+  }
+}
+
+export { SSSPlugin };

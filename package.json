@@ -1,0 +1,41 @@
+{
+  "name": "bbl-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@babylonjs/core": "8.13.1",
+    "gsap": "^3.13.0",
+    "jquery": "^3.7.1",
+    "nanoid": "^5.1.5",
+    "tweakpane": "^4.0.5",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@babylonjs/inspector": "8.13.1",
+    "@babylonjs/materials": "8.13.1",
+    "@tweakpane/core": "^2.0.5",
+    "@types/jquery": "^3.5.32",
+    "@types/node": "^22.13.14",
+    "@types/stats.js": "^0.17.3",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/tsconfig": "^0.7.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0",
+    "vite-plugin-glsl": "^1.4.0",
+    "vue-tsc": "^2.2.4"
+  },
+  "overrides": {
+    "@babylonjs/loaders": "8.13.1",
+    "@babylonjs/serializers": "8.13.1",
+    "@babylonjs/addons": "8.13.1",
+    "babylonjs-gltf2interface": "8.13.1",
+    "@babylonjs/gui-editor": "8.13.1",
+    "@babylonjs/gui": "8.13.1"
+  }
+}

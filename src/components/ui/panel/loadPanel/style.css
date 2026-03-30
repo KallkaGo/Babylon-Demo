@@ -1,0 +1,86 @@
+.panel {
+  .load {
+    background-color: black;
+
+    .Loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: var(--loader-size, 150px);
+      min-width: 110px;
+      overflow: visible;
+      font-size: 25px;
+      border-radius: 50%;
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4), 0 0 25px rgba(255, 255, 255, 0.8);
+
+      &::after {
+        content: attr(data-text);
+        color: var(--text-color, #cecece);
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-size: calc(70% + 0.1vw);
+        text-transform: uppercase;
+        letter-spacing: 5px;
+      }
+
+      /* Keep ratio on resize*/
+      &::before {
+        content: '';
+        float: left;
+        padding-top: 100%;
+      }
+    }
+
+    .Loader__Circle {
+      display: block;
+      position: absolute;
+      border-radius: 50%;
+      top: 0px;
+      right: 0px;
+      bottom: 0px;
+      left: 0px;
+      opacity: 0.8;
+      mix-blend-mode: screen;
+      filter: brightness(120%);
+      animation-name: SpinAround;
+      animation-iteration-count: infinite;
+      animation-duration: 2s;
+      animation-fill-mode: both;
+      animation-timing-function: linear;
+
+      &:nth-of-type(1) {
+        box-shadow: inset 1px 0 0 1px var(--color-one, #2979ff), var(--light-size, 4px) 0 0 var(--light-size, 4px) var(--color-one, #2979ff);
+        animation-direction: reverse;
+        transform-origin: 49.6% 49.8%;
+      }
+
+      &:nth-of-type(2) {
+        box-shadow: inset 1px 0 0 1px var(--color-two, #ff1744), var(--light-size, 4px) 0px 0 var(--light-size, 4px) var(--color-two, #ff1744);
+        transform-origin: 49.5% 49.8%;
+      }
+
+      &:nth-of-type(3) {
+        box-shadow: inset 1px 0 0 1px var(--color-three, #ffff8d), 0 var(--light-size, 4px) 0 var(--light-size, 4px) var(--color-three, #ffff8d);
+        transform-origin: 49.8% 49.8%;
+      }
+
+      &:nth-of-type(4) {
+        box-shadow: inset 1px 0 0 1px var(--color-four, #b2ff59), 0 var(--light-size, 4px) 0 var(--light-size, 4px) var(--color-four, #b2ff59);
+        transform-origin: 49.7% 49.7%;
+      }
+    }
+  }
+}
+
+@keyframes SpinAround {
+  0% {
+    transform: rotate(0);
+  }
+
+  100% {
+    transform: rotate(-360deg);
+  }
+}

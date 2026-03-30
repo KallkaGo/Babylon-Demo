@@ -1,0 +1,285 @@
+import type { Asset } from '@/components/mgr/LoadMgr';
+
+import { getRootNode } from '@utils/tools';
+import RES from './RES';
+import {
+  AbstractMesh,
+  ArcRotateCamera,
+  AssetContainer,
+  Color4,
+  GPUPicker,
+  HemisphericLight,
+  Material,
+  Mesh,
+  MeshBuilder,
+  PBRMaterial,
+  Ray,
+  ShaderMaterial,
+  Sprite,
+  SpriteManager,
+  Texture,
+  Vector2,
+  Vector3,
+  type Nullable,
+} from '@babylonjs/core';
+import { Inspector } from '@babylonjs/inspector';
+import PanelMgr from '@/components/mgr/PanelMgr_back';
+import { GameSkecth } from '../../GameSketch';
+import { EStageID } from '@/components/enum/Enum';
+import annotationVertexShader from './shaders/annotation/vertex.glsl';
+import annotationFragmentShader from './shaders/annotation/fragment.glsl';
+
+interface Isprite {
+  sprite: Mesh;
+  index: number;
+  ray?: Ray;
+}
+
+const EPSLION = 0.01;
+const SPRITESIZE = 50;
+
+class SecondSketch extends GameSkecth {
+  constructor() {
+    super(EStageID.SECOND);
+
+    this.currentIndex = 0;
+
+    this.lastClickTime = 0;
+
+    this.clickCount = 0;
+
+    this.doubleClickDelay = 200;
+
+    this.spriteList = new Map();
+
+    // this.spriteList = [];
+
+    this.initialSprite = this.createInitialSprite();
+
+    this.gpuPicker = new GPUPicker();
+
+    this.addLight();
+
+    this.bindAssets(RES);
+
+    location.hash.includes('debug') && Inspector.Show(this.scene, {});
+  }
+
+  private spriteManager: Nullable<SpriteManager> = null;
+
+  private currentIndex: number;
+
+  private spriteList: Map<AbstractMesh, Isprite> = new Map();
+
+  private car!: AssetContainer;
+
+  private initialSprite: Mesh;
+
+  private gpuPicker: GPUPicker;
+
+  private lastClickTime;
+  private clickCount;
+  private doubleClickDelay; // 双击最大时间间隔
+
+  private addLight() {
+    const light = new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
+    light.intensity = 0.25;
+    const light2 = new HemisphericLight('light2', new Vector3(0, -1, 0), this.scene);
+    light2.intensity = 0.25;
+  }
+
+  private createSpriteManager(url: string) {
+    const spriteManager = new SpriteManager('Annotation', url, 10, 50, this.scene);
+    spriteManager.renderingGroupId = 1;
+    return spriteManager;
+  }
+
+  private createInitialSprite() {
+    const { scene } = this;
+    const sprite = MeshBuilder.CreatePlane('sprite', { width: 1, height: 1, sideOrientation: Mesh.DOUBLESIDE }, this.scene);
+
+    sprite.scaling.setAll(0.05);
+    const material = new ShaderMaterial(
+      'annotation',
+      scene,
+      {
+        vertexSource: annotationVertexShader,
+        fragmentSource: annotationFragmentShader,
+      },
+      {
+        attributes: ['position', 'uv'],
+        uniforms: ['uOpacity', 'world', 'view', 'projection', 'uResolution', 'uCellSize', 'uOffset'],
+        samplers: ['uDiffuseTexture'],
+        needAlphaBlending: true,
+      }
+    );
+
+    sprite.material = material;
+    // sprite.scaling.set(0.2, 0.1, 0.1);
+    sprite.setEnabled(false);
+    return sprite;
+  }
+
+  private regPick() {
+    const { scene, assets, spriteList, initialSprite, gpuPicker } = this;
+    const params = {
+      downPos: new Vector2(),
+      curPos: new Vector2(),
+      down: false,
+      isMove: false,
+    };
+
+    const spriteTex = assets.get('spriteTex')?.data as Texture;
+    const baseWidth = spriteTex._texture!.baseWidth;
+    const baseHeight = spriteTex._texture!.baseHeight;
+    const rowSize = baseWidth / SPRITESIZE;
+    const cloumnSize = baseHeight / SPRITESIZE;
+
+    scene.onPointerDown = (evt) => {
+      params.down = true;
+      params.isMove = false;
+      params.curPos.set(evt.offsetX, evt.offsetY);
+      params.downPos.set(evt.offsetX, evt.offsetY);
+    };
+
+    scene.onPointerMove = (evt) => {
+      if (!params.down) return;
+      const { curPos, downPos } = params;
+      curPos.set(evt.offsetX, evt.offsetY);
+      const distance = Vector2.Distance(curPos, downPos);
+      if (distance > 2) {
+        params.isMove = true;
+      }
+    };
+
+    scene.onPointerUp = (evt) => {
+      if (params.isMove) return;
+
+      const currentTime = new Date().getTime();
+      // 判断是否为第一次点击或超过双击时间间隔
+      if (this.clickCount === 0 || currentTime - this.lastClickTime > this.doubleClickDelay) {
+        this.clickCount = 1;
+        this.lastClickTime = currentTime;
+        params.down = false;
+        return;
+      }
+
+      // 如果是第二次点击且在时间间隔内
+      if (this.clickCount === 1 && currentTime - this.lastClickTime <= this.doubleClickDelay) {
+        params.down = false;
+        const curPos = params.curPos;
+        const pickInfo = scene.pick(curPos.x, curPos.y);
+
+        if (pickInfo.hit) {
+          const offset = (this.currentIndex / rowSize) >> 0;
+          const x = ((this.currentIndex - offset * rowSize) * SPRITESIZE) / baseWidth;
+          const y = 1 - ((offset + 1) * SPRITESIZE) / baseHeight;
+
+          const annotation = initialSprite.clone(`annotation-${this.currentIndex}`) as Mesh;
+          const baseMaterial = annotation.material as ShaderMaterial;
+          const material = baseMaterial.clone(`annotation-${this.currentIndex}`);
+          material.setTexture('uDiffuseTexture', spriteTex);
+          material.setVector2('uCellSize', new Vector2(1 / rowSize, 1 / cloumnSize));
+          material.setVector2('uOffset', new Vector2(x, y));
+
+          annotation.material = material;
+          annotation.setEnabled(true);
+          annotation.renderingGroupId = 1;
+          annotation.position.copyFrom(pickInfo.pickedPoint!);
+          spriteList.set(annotation, { sprite: annotation, index: this.currentIndex });
+
+          /* 更新gpupickList */
+          const list = spriteList.keys();
+          gpuPicker.setPickingList([...list]);
+          this.currentIndex++;
+        }
+
+        // 重置点击状态
+        this.clickCount = 0;
+        this.lastClickTime = 0;
+      }
+    };
+  }
+  update(dt: number): void {
+    super.update(dt);
+  }
+
+  updateBefore(dt: number): void {
+    super.updateBefore(dt);
+    const { spriteList, scene, camera } = this;
+    spriteList.forEach((item) => {
+      const ray = item.ray;
+      const spritePosition = item.sprite.position;
+      const cameraPosition = camera.position;
+
+      const sprite = item.sprite;
+      const absoluteRotation = camera.absoluteRotation;
+      sprite.rotationQuaternion = absoluteRotation;
+
+      const material = sprite.material as ShaderMaterial;
+      material.setVector2('uResolution', this.sizes);
+
+      const distance = cameraPosition.subtract(spritePosition).length();
+      if (!ray) {
+        item.ray = new Ray(cameraPosition, spritePosition.subtract(cameraPosition).normalize(), distance - EPSLION);
+      } else {
+        ray.origin.copyFrom(cameraPosition);
+        ray.direction.copyFrom(spritePosition.subtract(cameraPosition).normalize());
+        ray.length = distance - EPSLION;
+      }
+      const hit = scene.pickWithRay(item.ray!);
+      if (hit?.pickedMesh) {
+        material.setFloat('uOpacity', 0.2);
+      } else {
+        material.setFloat('uOpacity', 1);
+      }
+    });
+  }
+  updateAfter(dt: number): void {
+    super.updateAfter(dt);
+  }
+  onLoad(asset: Asset): void {
+    super.onLoad(asset);
+    switch (asset.type) {
+      case 'gltf':
+        const gltfContainer = asset.data!;
+
+        if (asset.name === 'car') {
+          const root = getRootNode(gltfContainer);
+          root.parent = this.world;
+          root.scaling.setAll(0.01);
+          this.car = gltfContainer;
+          gltfContainer.addToScene();
+          return;
+        }
+
+        break;
+      case 'cube':
+        const cubeTexture = asset.data!;
+        if (asset.name === 'skybox') {
+          this.scene.createDefaultSkybox(cubeTexture, false, 1000, 0, true);
+          return;
+        }
+
+        break;
+      case 'texture':
+        const texture = asset.data!;
+        if (asset.name === 'spriteTex') {
+          const url = asset.src!;
+          this.spriteManager = this.createSpriteManager(url);
+          this.spriteManager.isPickable = true;
+          return;
+        }
+
+        break;
+    }
+  }
+  onLoadComplete(): void {
+    super.onLoadComplete();
+    console.log('onLoadComplete');
+    PanelMgr.shared.hide('loading');
+    this.regPick();
+  }
+}
+
+export default SecondSketch;
